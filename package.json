@@ -1,0 +1,11 @@
+{
+  "name": "cat-card-web",
+  "version": "1.0.0",
+  "description": "既事已定 —— P2P 联机猫牌卡牌游戏（UNO × 薛定谔的猫 × 左轮）",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests.mjs"
+  },
+  "license": "MIT"
+}

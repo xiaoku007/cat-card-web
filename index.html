@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>既事已定 · 猫牌</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- 大厅 -->
+  <div id="screen-lobby" class="screen">
+    <div class="lobby-wrap">
+      <h1 class="logo">既事已定</h1>
+      <p class="subtitle">猫 · 牌 · 心 · 战</p>
+
+      <div class="lobby-card">
+        <label class="field">
+          <span>昵称</span>
+          <input id="nick-input" maxlength="12" autocomplete="off">
+        </label>
+        <div id="lobby-actions">
+          <button id="btn-create" class="btn primary">创建房间</button>
+          <label class="field inline">
+            <input id="room-input" maxlength="5" placeholder="房间码" autocomplete="off">
+          </label>
+          <button id="btn-join" class="btn">加入</button>
+        </div>
+        <p id="lobby-hint" class="hint"></p>
+      </div>
+
+      <div id="room-panel" class="lobby-card hidden">
+        <div class="room-code-line">
+          房间码 <b id="room-code">-----</b>
+          <button id="btn-copy" class="btn small">复制链接</button>
+        </div>
+        <div id="host-toggles" class="toggles hidden">
+          <div class="toggles-title">可选规则</div>
+          <label class="toggle"><input type="checkbox" id="tg-cats4" checked> 2/3 人时每人 4 张猫牌</label>
+          <label class="toggle"><input type="checkbox" id="tg-handcat" checked> 额外猫牌规则（手牌猫）</label>
+          <label class="toggle"><input type="checkbox" id="tg-unprotect" checked> 保护牌可解除他人保护</label>
+          <label class="toggle"><input type="checkbox" id="tg-elimination" checked> 淘汰制玩法</label>
+        </div>
+        <div id="guest-settings" class="toggles-title"></div>
+        <div id="seat-list" class="seat-list"></div>
+        <div class="lobby-bottom">
+          <button id="btn-ready" class="btn primary hidden">准备</button>
+          <button id="btn-start" class="btn primary hidden">开始游戏</button>
+          <button id="btn-leave-lobby" class="btn danger hidden">离开房间</button>
+        </div>
+      </div>
+
+      <p class="footnote">2~4 人 · P2P 联机（WebRTC）</p>
+    </div>
+  </div>
+
+  <!-- 游戏桌面 -->
+  <div id="screen-game" class="screen hidden">
+    <div id="table">
+      <div id="opponents"></div>
+      <div id="board-center">
+        <div id="draw-pile" class="pile">
+          <div class="pile-back"></div>
+          <span id="deck-count" class="pile-count">0</span>
+        </div>
+        <div id="direction-badge" class="hidden"></div>
+        <div id="discard-pile" class="pile"></div>
+      </div>
+      <div id="my-area"></div>
+    </div>
+
+    <div id="log-panel"><div id="log-lines"></div></div>
+
+    <div id="status-bar">
+      <span id="conn-status" class="ok">●</span>
+      <span id="game-phase-text">大厅</span>
+    </div>
+  </div>
+
+  <!-- 弹窗容器 -->
+  <div id="modal-root" class="hidden"></div>
+  <div id="toast-root"></div>
+</div>
+
+<script src="vendor/peerjs.min.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
