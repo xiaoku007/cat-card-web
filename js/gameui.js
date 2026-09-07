@@ -1,7 +1,7 @@
 // gameui.js —— 游戏桌面 UI 与动效（杀戮尖塔风格：平滑位移动画、翻牌、飞牌）
 'use strict';
 
-import { cardName, catName, canPlayOn, WHITE, BLACK, FUNC_DRAW, FUNC_PEEK, FUNC_SWAP, FUNC_PROTECT, FUNC_MUTE } from './cards.js';
+import { cardName, cardTitle, catName, canPlayOn, WHITE, BLACK, FUNC_DRAW, FUNC_PEEK, FUNC_SWAP, FUNC_PROTECT, FUNC_MUTE } from './cards.js';
 import { neighborSeats } from './util.js';
 
 const $ = (id) => document.getElementById(id);
@@ -94,6 +94,7 @@ export class GameUI {
         for (let i = 0; i < Math.min(6, p.hand.length); i++) {
           const c = document.createElement('div');
           c.className = 'card card-mini back';
+          c.innerHTML = backHTML();
           c.style.marginLeft = i === 0 ? '0' : '-26px';
           hp.appendChild(c);
         }
@@ -138,6 +139,7 @@ export class GameUI {
     }
     if (fd) {
       el.classList.add('facedown');
+      el.innerHTML = catBackHTML();
     } else if (showCat) {
       el.classList.add('revealed');
       el.innerHTML = catFaceHTML(showCat);
@@ -168,12 +170,15 @@ export class GameUI {
     const s = this.s;
     if (s.phase === 'lobby') return;
     $('deck-count').textContent = s.deck ? s.deck.length : 0;
+    const back = document.querySelector('#draw-pile .pile-back');
+    if (back && !back.querySelector('img')) back.innerHTML = backHTML();
     const discard = $('discard-pile');
     const last = s.lastCard;
     if (last) {
       discard.innerHTML = '';
       const el = document.createElement('div');
       el.className = 'card card-face last-card ' + colorClass(last);
+      el.title = cardTitle(last);
       el.innerHTML = cardFaceHTML(last);
       discard.appendChild(el);
     } else {
@@ -257,6 +262,7 @@ export class GameUI {
       el.className = 'card card-face hcard ' + colorClass(c) + (this.isPlayable(c) ? ' playable' : '');
       if (this.handSel.has(c.id)) el.classList.add('sel');
       el.dataset.id = c.id;
+      el.title = cardTitle(c);
       el.innerHTML = cardFaceHTML(c);
       const off = i - (n - 1) / 2;
       const x = startX + i * step;
@@ -492,6 +498,7 @@ export class GameUI {
   openWildModal(card) {
     const m = this.openModal(`
       <h3>🎨 万能牌</h3>
+      <img class="wild-preview" src="assets/cards/wild.png" alt="万能牌">
       <p>自定义颜色与点数</p>
       <div class="wild-picker">
         <div class="wp-colors">
@@ -1001,39 +1008,30 @@ export class GameUI {
   }
 }
 
-// ---------- 牌面 HTML ----------
+// ---------- 牌面 HTML（美术图 + 万能牌指定标记） ----------
 export function colorClass(card) {
   if (card.type === 'wild' || card.color === 'gray') return 'c-gray';
   return card.color === 'white' ? 'c-white' : 'c-black';
 }
 
 export function cardFaceHTML(card) {
-  if (card.type === 'wild') {
-    return `<div class="cf-wild"><span class="cf-wild-icon">🌈</span><span class="cf-name">万能牌</span></div>`;
+  let html = `<img class="card-img" src="assets/cards/${card.img || 'back-card'}.png" alt="${cardName(card)}" draggable="false">`;
+  if (card.type === 'wild' && card.assignedColor != null) {
+    html += `<span class="wild-claim ${card.assignedColor === WHITE ? 'c-white' : 'c-black'}">${card.assignedColor === WHITE ? '白' : '黑'}${card.assignedPoint}</span>`;
   }
-  if (card.type === 'number') {
-    return `<div class="cf-num"><span class="cf-point">${card.point}</span><span class="cf-color">${card.color === 'white' ? '白' : '黑'}</span></div>`;
-  }
-  const f = {
-    [FUNC_DRAW]: ['⛁', '摸牌', '打出者摸 1 张；已有翻开的猫牌则额外再摸 1 张'],
-    [FUNC_PEEK]: ['👁', '观看', '观看邻家或自己的一张盖置猫牌'],
-    [FUNC_SWAP]: ['⇄', '互换', '互换两张盖置的猫牌（或两张手牌猫）'],
-    [FUNC_PROTECT]: ['🛡', '保护', `打出数字 ${card.triggers[0]} 的点数牌或万能牌时失效`],
-    [FUNC_MUTE]: ['🔇', '禁言', `打出同色 ${card.triggers.join(' 或 ')} 或万能牌时失效`],
-  }[card.func];
-  return `<div class="cf-func">
-    <span class="cf-icon">${f[0]}</span>
-    <span class="cf-fname">${f[1]}</span>
-    ${card.triggers.length ? `<span class="cf-trig">${card.triggers.join(' · ')}</span>` : ''}
-    <span class="cf-desc">${f[2]}</span>
-  </div>`;
+  return html;
 }
 
 export function catFaceHTML(cat) {
-  return `<div class="cat-face ${cat.color === 'white' ? 'c-white' : 'c-black'}">
-    <span class="cat-emoji">${cat.color === 'white' ? '🐱' : '🐈‍⬛'}</span>
-    <span class="cat-point">${cat.point}</span>
-  </div>`;
+  return `<img class="cat-img" src="assets/cards/cat-${cat.color === WHITE ? 'w' : 'b'}${cat.point}.png" alt="${catName(cat)}" draggable="false">`;
+}
+
+export function backHTML() {
+  return `<img class="card-img" src="assets/cards/back-card.png" alt="卡背" draggable="false">`;
+}
+
+export function catBackHTML() {
+  return `<img class="catback-img" src="assets/cards/back-cat.png" alt="猫牌背" draggable="false">`;
 }
 
 function escapeHtml(str) {

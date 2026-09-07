@@ -64,6 +64,7 @@ node server.js  # 启动静态服务器
 ```
 index.html        页面入口
 css/style.css     全部样式（桌面/卡牌/动效）
+assets/cards/     卡牌美术图（由「导出」文件夹缩放规范化而来，320px 宽）
 vendor/peerjs.min.js   PeerJS 运行时（本地化，离线可用）
 js/cards.js       牌组定义与出牌合法性
 js/rules.js       纯规则引擎（状态机、效果、猜牌/反猜、可选规则）
