@@ -35,7 +35,7 @@ P2P 数据直连不经过服务器，信号（信令）默认走官方云，因�
 2. 或本地跑 `node server.js` 后用 [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) 隧道临时暴露：
    `cloudflared tunnel --url http://localhost:5500`，把生成的 https 地址分享给朋友即可。
 
-## 规则开关（大厅可选，默认开）
+## 规则开关（大厅可选，默认关闭）
 
 | 开关 | 效果 |
 | --- | --- |

@@ -68,10 +68,12 @@ export class Engine {
       s.players.splice(seat, 1);
       s.players.forEach((q, i) => q.seat = i);
       this.evPush('leave', { seat, name: p.name });
+      this.commit();
     } else {
       // 对局中：标记断线（由网络层决定是否淘汰）
       p.connected = false;
       this.evPush('drop', { seat, name: p.name });
+      this.commit();
     }
   }
 
@@ -159,18 +161,17 @@ export class Engine {
     return { ok: true };
   }
 
-  // 摆猫：调整自己猫牌顺序（arrange 阶段允许一直调整）
-  arrange(seat, order) {
+  // 摆猫：交换自己的两张猫牌位置（增量语义：交换“当前”数组的 a、b 两位，快速连续交换天然正确）
+  arrange(seat, a, b) {
     const s = this.s;
     if (s.phase !== 'arrange' || !s.pending.arrange.includes(seat)) return { ok: false, error: '未在摆猫阶段' };
     const p = s.players[seat];
     if (!p || p.eliminated) return { ok: false, error: '无效玩家' };
-    if (!Array.isArray(order) || order.length !== p.cats.length) return { ok: false, error: '顺序无效' };
-    const seen = new Set(order);
-    if (seen.size !== p.cats.length || !order.every(i => i >= 0 && i < p.cats.length)) return { ok: false, error: '顺序无效' };
-    const reordered = order.map(i => p.cats[i]);
-    p.cats = reordered;
-    this.evPush('arrange', { seat, order });
+    if (!Number.isInteger(a) || !Number.isInteger(b) || a === b ||
+        a < 0 || b < 0 || a >= p.cats.length || b >= p.cats.length) return { ok: false, error: '交换位置无效' };
+    const t = p.cats[a]; p.cats[a] = p.cats[b]; p.cats[b] = t;
+    this.evPush('arrange', { seat, a, b });
+    this.commit();
     return { ok: true };
   }
 

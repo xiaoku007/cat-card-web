@@ -137,9 +137,21 @@ export class GameUI {
       if (sl.cover && sl.coverRevealed) showCat = sl.cover;
       else if (sl.baseRevealed) showCat = sl.base;
     }
+    // 摆猫阶段：本人可预览自己盖置猫牌的内容，方便安排顺序
+    const preview = !isOpp && p.seat === this.mySeat && this.s.phase === 'arrange' && !!fd;
     if (fd) {
       el.classList.add('facedown');
-      el.innerHTML = catBackHTML();
+      if (preview) {
+        el.classList.add('previewing');
+        el.title = '摆猫预览：' + catName(fd) + '（开局后翻回盖置）';
+        el.innerHTML = catFaceHTML(fd);
+        const badge = document.createElement('span');
+        badge.className = 'preview-badge';
+        badge.textContent = '👁 预览';
+        el.appendChild(badge);
+      } else {
+        el.innerHTML = catBackHTML();
+      }
     } else if (showCat) {
       el.classList.add('revealed');
       el.innerHTML = catFaceHTML(showCat);
@@ -251,11 +263,15 @@ export class GameUI {
 
     handEl.innerHTML = '';
     const n = me.hand.length;
-    const W = handEl.clientWidth || Math.min(window.innerWidth - 160, 1500);
-    const cardW = 108, cardH = 152;
-    const usable = Math.min(W, cardW * n + (n > 1 ? 40 : 0));
-    const step = n > 1 ? Math.min(86, (usable - cardW) / (n - 1)) : 0;
-    const startX = (W - (cardW + step * (n - 1))) / 2;
+    const W = handEl.clientWidth || Math.min(window.innerWidth - 120, 1500);
+    const cardW = 108;
+    const maxOff = Math.max(1, (n - 1) / 2);
+    // 横向密度自适应：总宽不超出容器；牌越多叠得越密
+    const step = n > 1 ? Math.min(86, (W - cardW) / (n - 1)) : 0;
+    const startX = Math.max(0, (W - (cardW + step * (n - 1))) / 2);
+    // 弧度随牌数收敛：最大下沉 ≤48px、最大旋转 ≤11deg，避免牌飞出可视范围
+    const yK = Math.min(6.5, 48 / (maxOff * maxOff));
+    const rotK = Math.min(2.0, 11 / maxOff);
 
     me.hand.forEach((c, i) => {
       const el = document.createElement('div');
@@ -266,8 +282,8 @@ export class GameUI {
       el.innerHTML = cardFaceHTML(c);
       const off = i - (n - 1) / 2;
       const x = startX + i * step;
-      const y = Math.abs(off) * Math.abs(off) * 7;
-      const rot = off * 2.2;
+      const y = Math.abs(off) * Math.abs(off) * yK;
+      const rot = off * rotK;
       el.style.left = x + 'px';
       el.style.transform = `translateY(${y}px) rotate(${rot}deg)`;
       el.style.zIndex = String(i + 1);
@@ -436,17 +452,14 @@ export class GameUI {
     this.hooks.act('pass', { slot: slotIdx });
   }
 
+  // 摆猫交换：点击两张猫牌 → 发送增量交换（服务端交换“当前”位置的 a、b，连点天然正确）
   onArrangeClick(i) {
     if (this.handSel.has('arr-' + i)) {
       this.handSel.delete('arr-' + i);
     } else if (this.handSel.size > 0) {
-      // 交换两张
       const a = parseInt([...this.handSel][0].split('-')[1], 10);
       this.handSel.clear();
-      const me = this.s.players[this.mySeat];
-      const order = me.cats.map((_, idx) => idx);
-      const tmp = order[a]; order[a] = order[i]; order[i] = tmp;
-      this.hooks.act('arrange', { order });
+      if (a !== i) this.hooks.act('arrange', { a, b: i });
     } else {
       this.handSel.add('arr-' + i);
     }

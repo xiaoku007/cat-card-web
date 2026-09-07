@@ -278,6 +278,14 @@ input:focus { border-color: #d8b25c; box-shadow: 0 0 0 3px rgba(216,178,92,.18);
 .catslot.arrangeable { cursor: pointer; border-style: dashed; border-color: #8ac3f0; }
 .catslot.arrangeable.sel { box-shadow: 0 0 0 3px #8ac3f0, 0 0 20px rgba(138,195,240,.6); transform: translateY(-8px); }
 .catslot.protected { border-color: rgba(216,178,92,.9); }
+.catslot.previewing { border-color: #7fc2ee; }
+.preview-badge {
+  position: absolute; top: -9px; left: 50%; transform: translateX(-50%);
+  background: #3f7fae; color: #fff; font-size: 10px; font-weight: 700;
+  border-radius: 999px; padding: 2px 8px; z-index: 4;
+  box-shadow: 0 2px 8px rgba(0,0,0,.45);
+  white-space: nowrap;
+}
 .catslot.covered { border-style: double; border-width: 3px; }
 
 .shield {

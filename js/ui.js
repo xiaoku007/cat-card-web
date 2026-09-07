@@ -7,7 +7,7 @@ export class LobbyUI {
     //          onSettings(settings), onLeave(), onCopyLink() }
     this.hooks = hooks;
     this.settings = {
-      extraCats2or3: true, handCatRule: true, protectOthers: true, eliminationMode: true,
+      extraCats2or3: false, handCatRule: false, protectOthers: false, eliminationMode: false,
     };
     this.nick = localStorage.getItem('catcard-nick') || '';
 

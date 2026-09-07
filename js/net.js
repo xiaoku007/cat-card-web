@@ -270,7 +270,7 @@ export class GameNet {
         if (seat !== this.engine.state.hostSeat) { reply({ ok: false, error: '只有房主可以开始' }); return; }
         reply(this.engine.startMatch());
         break;
-      case 'arrange': reply(this.engine.arrange(seat, pl.order)); break;
+      case 'arrange': reply(this.engine.arrange(seat, pl.a, pl.b)); break;
       case 'arrangeDone': reply(this.engine.arrangeDone(seat)); break;
       case 'direction': reply(this.engine.chooseDirection(seat, pl.dir)); break;
       case 'play': reply(this.engine.actPlay(seat, pl.cardId, pl.targets || {})); break;
@@ -311,7 +311,7 @@ export class GameNet {
       case 'ready': return this.engine.setReady(seat, !!payload.ready);
       case 'settings': return this.engine.setSettings(seat, payload.settings || {});
       case 'start': return this.engine.startMatch();
-      case 'arrange': return this.engine.arrange(seat, payload.order);
+      case 'arrange': return this.engine.arrange(seat, payload.a, payload.b);
       case 'arrangeDone': return this.engine.arrangeDone(seat);
       case 'direction': return this.engine.chooseDirection(seat, payload.dir);
       case 'play': return this.engine.actPlay(seat, payload.cardId, payload.targets || {});
@@ -568,7 +568,14 @@ export class GameNet {
 
   // ---------- 客户端发送行动 ----------
   act(type, payload) {
-    if (this.amHosting && !this.conn) { this.localAct(type, payload); return; }
+    if (this.amHosting && !this.conn) {
+      // 主机本地行动：立即广播并反馈错误
+      const r = this.localAct(type, payload);
+      if (r && !r.ok && r.error && this.cb.onErr) this.cb.onErr(r.error);
+      this.broadcast();
+      this.emitLocal();
+      return;
+    }
     if (!this.conn || !this.conn.open) { if (this.cb.onErr) this.cb.onErr('未连接到主机'); return; }
     try { this.conn.send({ t: 'act', playerId: this.myId, type, payload }); } catch (e) { /* noop */ }
   }
