@@ -225,20 +225,30 @@ input:focus { border-color: #d8b25c; box-shadow: 0 0 0 3px rgba(216,178,92,.18);
 .wild-claim.c-white { background: #f6f1e2; color: #2a2333; }
 .wild-claim.c-black { background: #1c1c24; color: #efecf6; }
 
+/* 手牌：悬停/选中只抬升内部图片，外层命中区域保持不动 —— 避免鼠标停在边缘时
+   因命中区随牌移动而反复触发/退出 hover 造成的上下抽搐 */
 .hcard {
   bottom: 6px; cursor: pointer;
   transition: opacity .15s;
+  overflow: visible;
 }
-.hcard:hover {
-  z-index: 300 !important;
-  transform: translateY(-26px) rotate(0deg) scale(1.07) !important;
-  box-shadow: 0 0 24px rgba(232,192,106,.5), 0 10px 24px rgba(0,0,0,.55) !important;
+.hcard:hover { z-index: 300 !important; }
+.hcard .card-img {
+  transition: transform .18s cubic-bezier(.2,.8,.3,1), box-shadow .18s ease;
+  will-change: transform;
+}
+.hcard:hover .card-img {
+  transform: translateY(-26px) scale(1.07);
+  box-shadow: 0 0 24px rgba(232,192,106,.5), 0 10px 24px rgba(0,0,0,.55);
 }
 .hcard.playable { box-shadow: 0 0 12px rgba(216,178,92,.35), 0 5px 14px rgba(0,0,0,.5); }
-.hcard.sel {
-  transform: translateY(-22px) !important;
-  box-shadow: 0 0 0 3px #e8c06a, 0 0 26px rgba(232,192,106,.6), 0 10px 24px rgba(0,0,0,.55) !important;
+.hcard.sel .card-img {
+  transform: translateY(-22px);
+  box-shadow: 0 0 0 3px #e8c06a, 0 0 26px rgba(232,192,106,.6), 0 10px 24px rgba(0,0,0,.55);
 }
+.hcard .wild-claim { transition: transform .18s cubic-bezier(.2,.8,.3,1); }
+.hcard:hover .wild-claim { transform: translateY(-26px) scale(1.07); }
+.hcard.sel .wild-claim { transform: translateY(-22px); }
 .card-mini { width: 42px; height: 58px; border-radius: 6px; position: relative; box-shadow: 0 2px 6px rgba(0,0,0,.5); }
 .last-card { position: relative; box-shadow: 0 6px 18px rgba(0,0,0,.55); }
 
