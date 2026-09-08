@@ -143,7 +143,6 @@ export class Engine {
       this.evPush('phase', { phase: 'arrange' });
       this.evPush('deckinfo', { deckCount: s.deck.length });
       this.evPush('flip', { card: first });
-      this.evPush('turn', { seat: s.currentSeat });
     } else {
       const next = nextAliveSeat(s, s.eliminatedSeat, s.direction);
       s.currentSeat = next;

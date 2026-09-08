@@ -22,6 +22,9 @@ export class GameUI {
   // ---------- 入口 ----------
   render(state) {
     if (!state) return;
+    // 同一状态版本只渲染一次（防止传输层重复广播导致事件/动画重放）
+    if (this.lastRenderedV === state.v) return;
+    this.lastRenderedV = state.v;
     const seq = ++this.renderSeq;
     this.s = JSON.parse(JSON.stringify(state));
     this.mySeat = this.hooks.mySeat();
@@ -1037,6 +1040,13 @@ export class GameUI {
           }
           case 'mute': {
             this.hooks.toast(`${s.players[ev.by].name} 禁言了 ${s.players[ev.targetSeat].name}`);
+            await d(200); break;
+          }
+          case 'protect': {
+            const z = ev.targetSeat === me ? document.querySelector(`#my-cats .catslot[data-cat-idx="${ev.slot}"]`)
+              : (this.zoneFor(ev.targetSeat) && this.zoneFor(ev.targetSeat).querySelector(`.catslot[data-cat-idx="${ev.slot}"]`));
+            const sh = z && z.querySelector('.shield');
+            if (sh) sh.classList.add('pop');
             await d(200); break;
           }
           default: await d(60);

@@ -336,10 +336,14 @@ export class GameNet {
     for (const [, rec] of this.conns) {
       if (rec.conn.open) { try { rec.conn.send(msg); } catch (e) { /* noop */ } }
     }
+    this.lastV = state.v;
   }
 
   emitLocal() {
-    if (this.engine && this.cb.onSync) this.cb.onSync(this.engine.state);
+    if (this.engine && this.cb.onSync) {
+      this.lastV = this.engine.state.v;
+      this.cb.onSync(this.engine.state);
+    }
   }
 
   // ---------- 主机定时任务 ----------
@@ -351,7 +355,6 @@ export class GameNet {
     if (!this.isHost || !this.engine) return;
     const s = this.engine.state;
     const now = Date.now();
-    let changed = this.lastV !== s.v;
     for (const [pid, rec] of this.conns) {
       const p = s.players.find(pl => pl.id === pid);
       if (!p) continue;
@@ -392,9 +395,12 @@ export class GameNet {
         this.engine.say(wp.seat, '连接中断，取消了万能牌选择');
       }
     }
-    if (this.lastV !== s.v || changed) this.broadcast();
-    if (this.lastV !== s.v || changed) this.emitLocal();
-    this.lastV = s.v;
+    // 仅当本次 tick 内状态有变化才广播（动作处理时已即时广播过，避免重复）
+    if (s.v !== this.lastV) {
+      this.broadcast();
+      this.emitLocal();
+      this.lastV = s.v;
+    }
   }
 
   logDrop(seat) {
