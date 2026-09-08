@@ -3,6 +3,7 @@
 
 import { cardName, cardTitle, catName, canPlayOn, WHITE, BLACK, FUNC_DRAW, FUNC_PEEK, FUNC_SWAP, FUNC_PROTECT, FUNC_MUTE } from './cards.js';
 import { neighborSeats } from './util.js';
+import { imgSrc } from './imgcache.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -517,7 +518,7 @@ export class GameUI {
     if (!alreadyPending) this.hooks.act('play', { cardId: card.id, targets: {} });
     const m = this.openModal(`
       <h3>🎨 万能牌</h3>
-      <img class="wild-preview" src="assets/cards/wild.png" alt="万能牌">
+      <img class="wild-preview" src="${imgSrc('wild')}" alt="万能牌">
       <p>自定义颜色与点数</p>
       <div class="wild-picker">
         <div class="wp-colors">
@@ -1087,7 +1088,7 @@ export function colorClass(card) {
 }
 
 export function cardFaceHTML(card) {
-  let html = `<img class="card-img" src="assets/cards/${card.img || 'back-card'}.png" alt="${cardName(card)}" draggable="false">`;
+  let html = `<img class="card-img" src="${imgSrc(card.img || 'back-card')}" alt="${cardName(card)}" draggable="false">`;
   if (card.type === 'wild' && card.assignedColor != null) {
     html += `<span class="wild-claim ${card.assignedColor === WHITE ? 'c-white' : 'c-black'}">${card.assignedColor === WHITE ? '白' : '黑'}${card.assignedPoint}</span>`;
   }
@@ -1095,15 +1096,15 @@ export function cardFaceHTML(card) {
 }
 
 export function catFaceHTML(cat) {
-  return `<img class="cat-img" src="assets/cards/cat-${cat.color === WHITE ? 'w' : 'b'}${cat.point}.png" alt="${catName(cat)}" draggable="false">`;
+  return `<img class="cat-img" src="${imgSrc('cat-' + (cat.color === WHITE ? 'w' : 'b') + cat.point)}" alt="${catName(cat)}" draggable="false">`;
 }
 
 export function backHTML() {
-  return `<img class="card-img" src="assets/cards/back-card.png" alt="卡背" draggable="false">`;
+  return `<img class="card-img" src="${imgSrc('back-card')}" alt="卡背" draggable="false">`;
 }
 
 export function catBackHTML() {
-  return `<img class="catback-img" src="assets/cards/back-cat.png" alt="猫牌背" draggable="false">`;
+  return `<img class="catback-img" src="${imgSrc('back-cat')}" alt="猫牌背" draggable="false">`;
 }
 
 function escapeHtml(str) {

@@ -26,7 +26,16 @@ http.createServer((req, res) => {
   if (!file.startsWith(ROOT)) { res.writeHead(403); res.end('Forbidden'); return; }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); res.end('Not Found'); return; }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream' });
+    const ext = path.extname(file).toLowerCase();
+    // 卡图等静态资源：永久缓存（内容不可变，更新时版本号由 IndexedDB 层管理）
+    // 代码与页面：每次请求都拿最新版，方便开发调试
+    const cache = urlPath.startsWith('/assets/')
+      ? 'public, max-age=31536000, immutable'
+      : 'no-cache';
+    res.writeHead(200, {
+      'Content-Type': MIME[ext] || 'application/octet-stream',
+      'Cache-Control': cache,
+    });
     res.end(data);
   });
 }).listen(PORT, '0.0.0.0', () => {

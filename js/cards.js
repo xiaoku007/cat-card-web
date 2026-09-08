@@ -7,6 +7,21 @@ export const WHITE = 'white';
 export const BLACK = 'black';
 export const GRAY = 'gray';
 
+// 卡图目录与全部卡图 key（与 imgcache.js 配合做本地缓存）
+export const IMG_DIR = 'assets/cards/';
+export const ALL_IMG_KEYS = [
+  // 点数牌
+  'w1', 'w2', 'w3', 'w4', 'w5', 'b1', 'b2', 'b3', 'b4', 'b5',
+  // 功能牌
+  'w-split', 'b-split', 'w-peek', 'b-peek', 'w-swap', 'b-swap',
+  'w-shield2', 'w-shield3', 'w-shield4', 'b-shield2', 'b-shield3', 'b-shield4',
+  'w-mute15', 'w-mute24', 'w-mute34', 'b-mute15', 'b-mute23', 'b-mute24',
+  // 万能牌与牌背
+  'wild', 'back-card', 'back-cat',
+  // 猫牌
+  'cat-w2', 'cat-w3', 'cat-w4', 'cat-b2', 'cat-b3', 'cat-b4',
+];
+
 export const FUNC_DRAW = 'draw';        // 摸牌
 export const FUNC_PEEK = 'peek';        // 观看
 export const FUNC_SWAP = 'swap';        // 互换

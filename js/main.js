@@ -4,12 +4,17 @@
 import { GameNet, parseUrl } from './net.js';
 import { LobbyUI, setupRulebook } from './ui.js';
 import { GameUI } from './gameui.js';
+import { initImageCache, imageCacheStats } from './imgcache.js';
 
 const $ = (id) => document.getElementById(id);
 const urlp = parseUrl();
 
 // 规则书入口（大厅按钮 + 游戏内按钮）
 setupRulebook();
+
+// 卡图本地缓存预热（后台进行，不阻塞界面）
+initImageCache();
+window.__imgCacheStats = imageCacheStats;
 
 // ---------- 提示 ----------
 function toast(msg, ms = 2600) {
