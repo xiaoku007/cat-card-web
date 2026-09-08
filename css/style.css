@@ -134,6 +134,7 @@ input:focus { border-color: #d8b25c; box-shadow: 0 0 0 3px rgba(216,178,92,.18);
   background: rgba(0,0,0,.55); border-radius: 6px; padding: 1px 5px; color: #ded7f0;
 }
 .oz-handcat {
+  display: inline-block;
   font-size: 11px; background: #2c2745; border: 1px solid #6a5f9e;
   border-radius: 6px; padding: 2px 6px; margin-left: 4px;
 }
@@ -314,6 +315,15 @@ input:focus { border-color: #d8b25c; box-shadow: 0 0 0 3px rgba(216,178,92,.18);
 @keyframes faceIn {
   0% { transform: rotateY(180deg); }
   100% { transform: rotateY(0deg); }
+}
+
+/* 互换动画：两张被交换的猫位同步闪烁脉冲 */
+.swapflash { animation: swapPulse .9s cubic-bezier(.3,.7,.3,1); }
+@keyframes swapPulse {
+  0% { transform: scale(1) translateY(0); }
+  30% { transform: scale(1.16) translateY(-10px); box-shadow: 0 0 24px rgba(232,192,106,.9), 0 10px 22px rgba(0,0,0,.5); }
+  55% { transform: scale(.94) translateY(2px); }
+  100% { transform: scale(1) translateY(0); }
 }
 
 /* ============ 日志 / 状态栏 ============ */

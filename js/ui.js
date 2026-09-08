@@ -131,9 +131,10 @@ export class LobbyUI {
       this.el.start.disabled = !canStart;
       this.el.start.textContent = canStart ? `开始游戏（${state.players.length} 人）` : '至少需要 2 名玩家';
     } else {
-      this.el.ready.textContent = '已准备 ✓';
       const me = state.players.find(p => p.id === this.hooks.myId());
-      this.el.ready.classList.toggle('done', !!(me && me.ready));
+      const ready = !!(me && me.ready);
+      this.el.ready.textContent = ready ? '已准备 ✓' : '准备';
+      this.el.ready.classList.toggle('done', ready);
     }
   }
 

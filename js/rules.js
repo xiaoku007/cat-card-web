@@ -413,7 +413,7 @@ export class Engine {
           pa.cats[a.slot] = pb.cats[b.slot];
           pb.cats[b.slot] = tmp;
           this.evPush('swap', { kind: 'table', a: { seat: a.seat, slot: a.slot }, b: { seat: b.seat, slot: b.slot } });
-          this.say(seat, `互换了 ${pa.name} 与 ${pb.name} 的猫牌`);
+          this.say(seat, `互换了 ${pa.name} 的猫牌${a.slot + 1} 与 ${pb.name} 的猫牌${b.slot + 1}（牌位二换一）`);
         } else {
           const pa = s.players[a.seat], pb = s.players[b.seat];
           const tmp = pa.handCat; pa.handCat = pb.handCat; pb.handCat = tmp;

@@ -997,6 +997,24 @@ export class GameUI {
             this.hooks.toast(`💀 ${escapeHtml(s.players[ev.seat].name)} 被淘汰（${ev.reason === 'cats' ? '猫牌全翻' : ev.reason === 'guess' ? '被猜中' : ev.reason === 'counter' ? '被反猜中' : ev.reason === 'dc' ? '掉线' : '猜错'}）`);
             await d(600); break;
           }
+          case 'swap': {
+            // 互换动画：高亮两张被交换的猫位/手牌猫
+            const flash = (container, sel) => {
+              const el = container && container.querySelector(sel);
+              if (el) { el.classList.remove('swapflash'); void el.offsetWidth; el.classList.add('swapflash'); }
+            };
+            const targets = [ev.a, ev.b];
+            for (const t of targets) {
+              if (ev.kind === 'table') {
+                const c = t.seat === me ? $('my-cats') : this.zoneFor(t.seat);
+                flash(c, `.catslot[data-cat-idx="${t.slot}"]`);
+              } else {
+                const c = t.seat === me ? $('my-info') : this.zoneFor(t.seat);
+                flash(c, '.oz-handcat');
+              }
+            }
+            await d(500); break;
+          }
           case 'guess': {
             const winnerSide = ev.ok ? '猜中！' : '猜错…';
             this.hooks.toast(`${s.players[ev.guessSeat].name} 猜 ${s.players[ev.targetSeat].name}：${ev.colors.map(c => c === 'white' ? '白' : '黑').join(' ')} — ${winnerSide}`);
