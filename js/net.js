@@ -275,6 +275,7 @@ export class GameNet {
       case 'direction': reply(this.engine.chooseDirection(seat, pl.dir)); break;
       case 'play': reply(this.engine.actPlay(seat, pl.cardId, pl.targets || {})); break;
       case 'wild': reply(this.engine.chooseWild(seat, pl.color, pl.point)); break;
+      case 'wildCancel': reply(this.engine.cancelWild(seat)); break;
       case 'pass': reply(this.engine.actPass(seat, pl.slot)); break;
       case 'cover': reply(this.engine.actCover(seat, pl.slot)); break;
       case 'guess': reply(this.engine.actGuess(seat, pl.targetSeat, pl.colors, pl.discardIds)); break;
@@ -382,6 +383,14 @@ export class GameNet {
       const seat = s.round === 1 ? 0 : null;
       const p = seat != null ? s.players[seat] : null;
       if (p && !p.connected) this.engine.chooseDirection(seat, 1);
+    }
+    // 万能牌待选兜底：选牌者掉线/被淘汰则自动取消，避免全场卡在等待
+    if (s.pending && s.pending.wild) {
+      const wp = s.players[s.pending.wild.seat];
+      if (wp && (wp.eliminated || !wp.connected)) {
+        this.engine.cancelWild(wp.seat);
+        this.engine.say(wp.seat, '连接中断，取消了万能牌选择');
+      }
     }
     if (this.lastV !== s.v || changed) this.broadcast();
     if (this.lastV !== s.v || changed) this.emitLocal();

@@ -508,9 +508,10 @@ export class GameUI {
   }
 
   // ---------- 万能牌 ----------
-  openWildModal(card) {
+  openWildModal(card, alreadyPending = false) {
     // 先通知主机：该玩家正在选择万能牌（建立 pending.wild 待选状态）
-    this.hooks.act('play', { cardId: card.id, targets: {} });
+    // 若因重连/刷新而恢复弹窗，则待选已存在，无需再发
+    if (!alreadyPending) this.hooks.act('play', { cardId: card.id, targets: {} });
     const m = this.openModal(`
       <h3>🎨 万能牌</h3>
       <img class="wild-preview" src="assets/cards/wild.png" alt="万能牌">
@@ -846,6 +847,18 @@ export class GameUI {
 
   onGuessSelectChange() {}
 
+  // ---------- 万能牌待选恢复（刷新/重连后自动弹回选择框，避免卡死） ----------
+  maybeOpenWild() {
+    const s = this.s;
+    const w = s.pending && s.pending.wild;
+    if (!w || w.seat !== this.mySeat) return;
+    if (document.querySelector('#modal-root .wild-picker')) return; // 弹窗已在
+    const me = s.players[this.mySeat];
+    const card = me && me.hand.find(c => c.id === w.cardId);
+    if (!card) return;
+    this.openWildModal(card, true);
+  }
+
   // ---------- 反猜弹窗（由 render 检测 pending） ----------
   maybeOpenCounter() {
     const s = this.s;
@@ -1033,8 +1046,9 @@ export class GameUI {
     })();
     void seq;
 
-    // 反猜弹窗
+    // 反猜弹窗 / 万能牌待选恢复
     this.maybeOpenCounter();
+    this.maybeOpenWild();
   }
 }
 
