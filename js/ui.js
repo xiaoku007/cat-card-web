@@ -145,3 +145,22 @@ export class LobbyUI {
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+
+// 规则书：大厅按钮 + 游戏内小按钮 + 遮罩/ESC 关闭
+export function setupRulebook() {
+  const overlay = document.getElementById('rulebook');
+  const panel = document.getElementById('rb-panel');
+  const open = () => {
+    overlay.classList.remove('hidden');
+    panel.scrollTop = 0;
+  };
+  const close = () => overlay.classList.add('hidden');
+  document.getElementById('btn-rulebook').onclick = open;
+  const gBtn = document.getElementById('btn-rulebook-game');
+  if (gBtn) gBtn.onclick = open;
+  document.getElementById('rb-close').onclick = close;
+  overlay.onclick = (e) => { if (e.target === overlay) close(); };
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !overlay.classList.contains('hidden')) close();
+  });
+}

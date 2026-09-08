@@ -2,11 +2,14 @@
 'use strict';
 
 import { GameNet, parseUrl } from './net.js';
-import { LobbyUI } from './ui.js';
+import { LobbyUI, setupRulebook } from './ui.js';
 import { GameUI } from './gameui.js';
 
 const $ = (id) => document.getElementById(id);
 const urlp = parseUrl();
+
+// 规则书入口（大厅按钮 + 游戏内按钮）
+setupRulebook();
 
 // ---------- 提示 ----------
 function toast(msg, ms = 2600) {

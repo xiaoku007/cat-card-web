@@ -14,6 +14,7 @@
     <div class="lobby-wrap">
       <h1 class="logo">既事已定</h1>
       <p class="subtitle">猫 · 牌 · 心 · 战</p>
+      <button id="btn-rulebook" class="btn rb-open">📖 规则书</button>
 
       <div class="lobby-card">
         <label class="field">
@@ -75,6 +76,90 @@
     <div id="status-bar">
       <span id="conn-status" class="ok">●</span>
       <span id="game-phase-text">大厅</span>
+      <button id="btn-rulebook-game" class="rb-mini" title="规则书">📖</button>
+    </div>
+  </div>
+
+  <!-- 规则书 -->
+  <div id="rulebook" class="rb-overlay hidden">
+    <div class="rb-panel" id="rb-panel">
+      <button id="rb-close" class="rb-close" title="关闭">✕</button>
+      <h2>📖 规则书 · 既事已定</h2>
+      <p class="rb-intro">灵感：UNO × 薛定谔的猫 × 左轮 —— 2~4 人联机卡牌对战，最后留下的玩家获胜。</p>
+
+      <h3>卡牌构成（共 105 张）</h3>
+      <table class="rb-table">
+        <tr><th>类别</th><th>数量</th><th>说明</th></tr>
+        <tr><td>白 1~5 点数牌</td><td>各 6 张 × 5 种 = 30</td><td>白色点数牌</td></tr>
+        <tr><td>黑 1~5 点数牌</td><td>各 6 张 × 5 种 = 30</td><td>黑色点数牌</td></tr>
+        <tr><td>白功能牌</td><td>5 种 × 3 张 = 15</td><td>摸牌 / 观看 / 互换 / 保护 / 禁言</td></tr>
+        <tr><td>黑功能牌</td><td>5 种 × 3 张 = 15</td><td>同上（黑白各一套）</td></tr>
+        <tr><td>灰色万能牌</td><td>3</td><td>任意时机打出，自定颜色与点数</td></tr>
+        <tr><td>猫牌</td><td>12</td><td>白 2/3/4 各 2、黑 2/3/4 各 2 —— 生死攸关的命牌</td></tr>
+      </table>
+
+      <h3>开局</h3>
+      <ol>
+        <li>每人随机获得 3 张猫牌（房主开启可选规则时为 4 张），<b>摆猫阶段可以预览自己的猫牌</b>，并点击两张猫牌互换调整排列顺序</li>
+        <li>每人摸 8 张手牌</li>
+        <li>翻开牌堆顶一张作初始牌；1 号位（房主）选择顺时针/逆时</li>
+      </ol>
+
+      <h3>回合行动（四选一）</h3>
+      <ol>
+        <li><b>出牌</b>：按下方规则打出一张手牌</li>
+        <li><b>猜牌</b>：弃置总和严格为 5 的点数牌，猜别人的猫牌（见下）</li>
+        <li><b>翻猫跳过</b>：无法或不愿出牌时，翻开自己一张猫牌，摸其点数（2~4）张牌，跳过回合</li>
+        <li><b>盖猫</b>（可选规则）：用手牌中的猫牌盖回一张已翻开的猫牌，下家摸 2 张</li>
+      </ol>
+
+      <h3>出牌规则</h3>
+      <ul>
+        <li>上家是<b>点数牌</b>：打出<b>点数更小的白色点数牌</b>或<b>点数更大的黑色点数牌</b>（不看上家颜色），或与上家<b>同色的功能牌</b>
+          <div class="rb-chips"><span class="rb-chip chip-white">白3</span><span class="rb-chip chip-arrow">→</span><span class="rb-chip chip-white">白2 ✓</span><span class="rb-chip chip-black">黑5 ✓</span><span class="rb-chip chip-black">黑2 ✗</span></div>
+        </li>
+        <li>上家是<b>功能牌</b>：打出<b>同色</b>的任意牌</li>
+        <li><b>万能牌</b>：任意时机打出，自选颜色（白/黑）与点数（1~5）；之后按指定值视为点数牌</li>
+      </ul>
+
+      <h3>五种功能牌</h3>
+      <table class="rb-table">
+        <tr><th>功能</th><th>效果</th></tr>
+        <tr><td>摸牌</td><td>打出者摸 1 张；已有翻开的猫牌则额外再摸 1 张</td></tr>
+        <tr><td>观看</td><td>观看邻家或自己的一张盖置猫牌（可为手牌猫）；受保护的看不了</td></tr>
+        <tr><td>互换</td><td>互换两张盖置且未保护的猫牌，或两张手牌猫；可互换不足两张时不能打出</td></tr>
+        <tr><td>保护</td><td>盖在自己一张盖置猫牌上（牌面印有数字 N）；有人打出 N 点数的点数牌或万能牌时失效。可选规则：可打在他人已保护的猫牌上解除其保护</td></tr>
+        <tr><td>禁言</td><td>放在任意玩家处（牌面印有两个数字）：该玩家<b>不能猜牌、得不到淘汰奖励</b>；有人打出同色同数字的牌或万能牌时失效。对自己使用：摸 1 张并解除自身全部禁言</td></tr>
+      </table>
+
+      <h3>淘汰方式</h3>
+      <ul>
+        <li><b>猫牌全翻</b>：自己的猫牌全部翻开时，立刻淘汰</li>
+        <li><b>猜中</b>：被猜中猫牌颜色 → 被猜者淘汰</li>
+        <li><b>猜错</b>：无人反猜或反猜失败 → 猜方淘汰；<b>反猜成功</b> → 原猜方淘汰</li>
+      </ul>
+
+      <h3>猜牌与反猜</h3>
+      <ol>
+        <li>在自己的回合，弃置任意数量<b>总和严格为 5</b>的点数牌</li>
+        <li>选出目标玩家，<b>依次报出对方所有未翻开猫牌的颜色</b>（按位置顺序）</li>
+        <li>全部猜中：目标淘汰，猜方<b>摸牌至 5 张</b>；猜错：对方可弃 1 张牌<b>反猜</b>你的猫牌颜色</li>
+        <li>已淘汰时触发<b>淘汰奖励</b>（在猜牌奖励之后）：所有未被禁言的存活玩家摸 1 张</li>
+      </ol>
+
+      <h3>可选规则（大厅由房主开关，默认关闭）</h3>
+      <ul>
+        <li><b>2/3 人 4 猫牌</b>：2~3 人局每人改为 4 张猫牌</li>
+        <li><b>额外猫牌</b>：2~3 人局每人手牌多 1 张猫牌；己方有翻开的猫牌时，可让下家摸 2 张并把这只猫盖回去续命；手牌猫可被「观看」「互换」指定</li>
+        <li><b>保护解除他人</b>：「保护」可打在他人已保护的猫牌上解除保护</li>
+        <li><b>淘汰制</b>：有玩家淘汰立刻重开新一局，被淘汰者出局；上一局用猜牌淘汰过对手的玩家初始手牌 +1</li>
+      </ul>
+
+      <h3>联机小贴士</h3>
+      <ul>
+        <li>房主点「复制链接」发给朋友即可加入（P2P 直连）</li>
+        <li>断线会自动重连；若房主掉线，将由仍在场的玩家自动接任主机，对局不中断</li>
+      </ul>
     </div>
   </div>
 
