@@ -89,8 +89,30 @@ const lobby = new LobbyUI({
   onLeave: () => { net.leaveRoom(); location.href = location.pathname; },
   onCopyLink: () => {
     const link = location.origin + location.pathname + '?room=' + net.roomId;
-    if (navigator.clipboard) navigator.clipboard.writeText(link).then(() => toast('邀请链接已复制 ✓'));
-    else toast(link, 5000);
+    const done = () => toast('邀请链接已复制 ✓');
+    const fallback = () => {
+      // 非安全上下文（如局域网 http）剪贴板 API 不可用：走 execCommand
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = link;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        ta.remove();
+        if (ok) done();
+        else toast(link, 8000);
+      } catch (e) {
+        toast(link, 8000);
+      }
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(link).then(done).catch(fallback);
+    } else {
+      fallback();
+    }
   },
   myId: () => myId,
 });

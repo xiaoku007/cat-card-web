@@ -509,6 +509,8 @@ export class GameUI {
 
   // ---------- 万能牌 ----------
   openWildModal(card) {
+    // 先通知主机：该玩家正在选择万能牌（建立 pending.wild 待选状态）
+    this.hooks.act('play', { cardId: card.id, targets: {} });
     const m = this.openModal(`
       <h3>🎨 万能牌</h3>
       <img class="wild-preview" src="assets/cards/wild.png" alt="万能牌">
@@ -523,15 +525,30 @@ export class GameUI {
         </div>
       </div>
       <p class="wp-preview" id="wp-preview">请选择颜色与点数</p>
+      <div class="modal-btns">
+        <button class="btn primary" id="wp-confirm" disabled>打出</button>
+        <button class="btn" id="wp-cancel">取消</button>
+      </div>
     `, { closable: false });
     let color = null, point = null;
     const preview = m.querySelector('#wp-preview');
+    const confirm = m.querySelector('#wp-confirm');
     const upd = () => {
+      m.querySelectorAll('[data-c]').forEach(b => b.classList.toggle('on', b.dataset.c === color));
+      m.querySelectorAll('[data-p]').forEach(b => b.classList.toggle('on', parseInt(b.dataset.p, 10) === point));
       preview.textContent = color && point ? `打出 ${color === 'white' ? '白' : '黑'}${point}` : (color ? '选择点数' : '请选择颜色与点数');
-      if (color && point) this.hooks.act('wild', { color, point });
+      confirm.disabled = !(color && point);
     };
     m.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { color = b.dataset.c; upd(); });
     m.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { point = parseInt(b.dataset.p, 10); upd(); });
+    confirm.onclick = () => {
+      this.closeModal();
+      this.hooks.act('wild', { color, point });
+    };
+    m.querySelector('#wp-cancel').onclick = () => {
+      this.closeModal();
+      this.hooks.act('wildCancel', {});
+    };
   }
 
   // ---------- 观看 ----------

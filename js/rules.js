@@ -483,10 +483,20 @@ export class Engine {
     if (!card) return { ok: false, error: '万能牌不见了' };
     card.assignedColor = color;
     card.assignedPoint = point;
-    const targetsOk = { ok: true }; // 万能牌无需目标
-    void targetsOk;
     this.completePlay(seat, card, {});
     return { ok: true };
+  }
+
+  // 取消万能牌待选（弹窗关闭时调用，牌留在手中）
+  cancelWild(seat) {
+    const s = this.s;
+    if (s.pending && s.pending.wild && s.pending.wild.seat === seat) {
+      s.pending.wild = null;
+      this.evPush('wildCancel', { seat });
+      this.commit();
+      return { ok: true };
+    }
+    return { ok: false, error: '无需取消' };
   }
 
   // 翻猫跳过（翻 1 张猫牌，摸其点数张牌，然后跳过）

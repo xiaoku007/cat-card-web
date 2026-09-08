@@ -70,6 +70,8 @@ export function buildCatDeck(rng = Math.random) {
 }
 
 // 判定能否打出：card 打在 last 上
+// 点数牌规则（与牌面文字一致）：打出比上家点数的白牌（更小）或黑牌（更大）——不看上家颜色；
+// 功能牌：与上家同色；万能牌：任意时机
 export function canPlayOn(card, last) {
   if (!card) return false;
   if (card.type === 'wild') return true;
@@ -85,8 +87,9 @@ export function canPlayOn(card, last) {
   }
   // 上家为点数牌
   if (card.type === 'number') {
-    if (lc === WHITE) return card.color === WHITE && card.point < lp;
-    return card.color === BLACK && card.point > lp;
+    if (card.point < lp && card.color === WHITE) return true;
+    if (card.point > lp && card.color === BLACK) return true;
+    return false;
   }
   if (card.type === 'function') {
     return card.color === lc;

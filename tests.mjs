@@ -28,15 +28,19 @@ for (const c of deck) {
 for (const c of ['white', 'black']) for (let p = 1; p <= 5; p++) ok(counts[`${c}-n${p}`] === 6, `${c}${p}×6`);
 ok(counts['white-protect'] === 3 && counts['black-mute'] === 3 && counts['wild'] === 3, '功能牌与万能牌数量');
 
-// 2. 出牌合法性
+// 2. 出牌合法性（点数牌：白更小、黑更大，不看上家颜色）
 const W = num => ({ color: 'white', type: 'number', point: num });
 const B = num => ({ color: 'black', type: 'number', point: num });
 const FN = (color) => ({ color, type: 'function', func: 'draw' });
 const WILD = { color: 'gray', type: 'wild' };
-ok(canPlayOn(W(2), W(5)), '上家白5 → 白2 可出');
+ok(canPlayOn(W(2), W(5)), '上家白5 → 白2 可出（白更小）');
 ok(!canPlayOn(W(5), W(3)), '上家白3 → 白5 不可出');
-ok(canPlayOn(B(4), B(2)), '上家黑2 → 黑4 可出');
-ok(!canPlayOn(W(2), B(3)), '上家黑3 → 白2 不可出');
+ok(canPlayOn(B(4), B(2)), '上家黑2 → 黑4 可出（黑更大）');
+ok(!canPlayOn(B(2), B(3)), '上家黑3 → 黑2 不可出');
+ok(canPlayOn(W(2), B(3)), '上家黑3 → 白2 可出（跨色：白更小）');
+ok(canPlayOn(B(5), W(3)), '上家白3 → 黑5 可出（跨色：黑更大）');
+ok(!canPlayOn(B(1), W(3)), '上家白3 → 黑1 不可出');
+ok(!canPlayOn(W(3), B(3)), '点数相等不可出');
 ok(canPlayOn(FN('white'), W(5)), '上家白5 → 白功能牌可出');
 ok(!canPlayOn(FN('black'), W(5)), '上家白5 → 黑功能牌不可出');
 ok(canPlayOn(WILD, W(5)), '万能牌任意可出');
@@ -44,7 +48,8 @@ ok(canPlayOn(W(2), FN('white')), '上家白功能 → 白2 可出');
 ok(!canPlayOn(B(2), FN('white')), '上家白功能 → 黑2 不可出');
 const wildPlayed = { color: 'gray', type: 'wild', assignedColor: 'black', assignedPoint: 3 };
 ok(canPlayOn(B(5), wildPlayed), '上家万能(黑3) → 黑5 可出');
-ok(!canPlayOn(W(3), wildPlayed), '上家万能(黑3) → 白3 不可出');
+ok(canPlayOn(W(1), wildPlayed), '上家万能(黑3) → 白1 可出（跨色）');
+ok(!canPlayOn(W(3), wildPlayed), '上家万能(黑3) → 白3 不可出（不更小）');
 
 // 3. 开局流程（4 人）
 const e = setup(4, { extraCats2or3: true, handCatRule: true, protectOthers: true });
@@ -162,6 +167,24 @@ s9.players[0].hand = [{ id: 'sw2', color: 'white', type: 'function', func: 'swap
 s9.currentSeat = 0;
 e9.actPlay(0, 'sw2', { a: { kind: 'hand', seat: 0 }, b: { kind: 'hand', seat: 1 } });
 ok(s9.players[0].handCat != null && s9.players[1].handCat != null, '手牌猫互换成功');
+
+// 13. 万能牌全流程：打出 → 待选 → 选色点数 → 入弃牌堆；取消流程
+const e10 = setup(2); toPlaying(e10, 2);
+const s10 = e10.s;
+s10.players[0].hand = [{ id: 'wld', color: 'gray', type: 'wild' }];
+s10.lastCard = { color: 'white', type: 'number', point: 3 }; // 无任何牌可打时不重要，万能总可打
+ok(e10.actPlay(0, 'wld', {}).ok, '万能牌进入待选状态');
+ok(s10.pending.wild && s10.pending.wild.seat === 0, 'pending.wild 已建立');
+ok(s10.players[0].hand.some(c => c.id === 'wld'), '待选期间手牌未移除');
+// 取消流程
+ok(e10.cancelWild(0).ok, '取消待选');
+ok(!s10.pending.wild, '待选状态已清除');
+// 重新进入待选 → 选择白3 → 打出
+e10.actPlay(0, 'wld', {});
+ok(e10.chooseWild(0, 'white', 3).ok, '选择白3 成功');
+ok(!s10.players[0].hand.some(c => c.id === 'wld'), '万能牌已从手牌移除');
+ok(s10.lastCard.assignedColor === 'white' && s10.lastCard.assignedPoint === 3, '弃牌堆顶牌为指定后的万能牌（白3）');
+ok(s10.currentSeat === 1, '打出后回合转移到下家');
 
 console.log(`\n通过 ${pass} 项，失败 ${fail} 项`);
 process.exit(fail ? 1 : 0);

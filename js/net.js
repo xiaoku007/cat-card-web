@@ -316,6 +316,7 @@ export class GameNet {
       case 'direction': return this.engine.chooseDirection(seat, payload.dir);
       case 'play': return this.engine.actPlay(seat, payload.cardId, payload.targets || {});
       case 'wild': return this.engine.chooseWild(seat, payload.color, payload.point);
+      case 'wildCancel': return this.engine.cancelWild(seat);
       case 'pass': return this.engine.actPass(seat, payload.slot);
       case 'cover': return this.engine.actCover(seat, payload.slot);
       case 'guess': return this.engine.actGuess(seat, payload.targetSeat, payload.colors, payload.discardIds);
