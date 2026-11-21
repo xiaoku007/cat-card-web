@@ -9,6 +9,8 @@ body {
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 .hidden { display: none !important; }
 
@@ -233,14 +235,9 @@ input:focus { border-color: #d8b25c; box-shadow: 0 0 0 3px rgba(216,178,92,.18);
   transition: opacity .15s;
   overflow: visible;
 }
-.hcard:hover { z-index: 300 !important; }
 .hcard .card-img {
   transition: transform .18s cubic-bezier(.2,.8,.3,1), box-shadow .18s ease;
   will-change: transform;
-}
-.hcard:hover .card-img {
-  transform: translateY(-26px) scale(1.07);
-  box-shadow: 0 0 24px rgba(232,192,106,.5), 0 10px 24px rgba(0,0,0,.55);
 }
 .hcard.playable { box-shadow: 0 0 12px rgba(216,178,92,.35), 0 5px 14px rgba(0,0,0,.5); }
 .hcard.sel .card-img {
@@ -248,8 +245,17 @@ input:focus { border-color: #d8b25c; box-shadow: 0 0 0 3px rgba(216,178,92,.18);
   box-shadow: 0 0 0 3px #e8c06a, 0 0 26px rgba(232,192,106,.6), 0 10px 24px rgba(0,0,0,.55);
 }
 .hcard .wild-claim { transition: transform .18s cubic-bezier(.2,.8,.3,1); }
-.hcard:hover .wild-claim { transform: translateY(-26px) scale(1.07); }
 .hcard.sel .wild-claim { transform: translateY(-22px); }
+
+/* 悬停浮起仅对真鼠标设备生效，避免触屏“粘性悬停”遮挡与误触 */
+@media (hover: hover) and (pointer: fine) {
+  .hcard:hover { z-index: 300 !important; }
+  .hcard:hover .card-img {
+    transform: translateY(-26px) scale(1.07);
+    box-shadow: 0 0 24px rgba(232,192,106,.5), 0 10px 24px rgba(0,0,0,.55);
+  }
+  .hcard:hover .wild-claim { transform: translateY(-26px) scale(1.07); }
+}
 .card-mini { width: 42px; height: 58px; border-radius: 6px; position: relative; box-shadow: 0 2px 6px rgba(0,0,0,.5); }
 .last-card { position: relative; box-shadow: 0 6px 18px rgba(0,0,0,.55); }
 
@@ -435,6 +441,68 @@ input:focus { border-color: #d8b25c; box-shadow: 0 0 0 3px rgba(216,178,92,.18);
   .card-mini { width: 36px; height: 50px; }
   .oz-hand { height: 50px; }
   .pile-back { width: 60px; height: 84px; }
+}
+
+/* ============ 手机适配（≤640px） ============ */
+@media (max-width: 640px) {
+  .card { width: 76px; height: 108px; border-radius: 9px; }
+  #hand { height: 118px; }
+  .hcard { bottom: 4px; }
+  .card-mini { width: 24px; height: 34px; border-radius: 4px; }
+  .catslot { width: 54px; height: 76px; border-radius: 9px; }
+  .catslot img.catback-img, .catslot img.cat-img { border-radius: 9px; }
+  .my-cats { gap: 6px; }
+  #my-area { gap: 4px; padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
+  #my-info { font-size: 12px; gap: 5px; }
+  #actions { min-height: 40px; }
+  .action-bar { gap: 6px; }
+  .action-bar .btn { padding: 9px 13px; font-size: 13px; }
+  .turn-hint { font-size: 13px; padding: 6px 12px; }
+  .btn { min-height: 40px; }
+
+  /* 对手区：三等分压缩，避免横向溢出 */
+  #opponents { top: 4px; gap: 4px; padding: 0 4px; }
+  .player-zone { width: 31%; max-width: 128px; padding: 5px 4px 6px; gap: 3px; border-radius: 10px; }
+  .oz-name { font-size: 11px; }
+  .oz-hand { height: 34px; }
+  .oz-handcat { font-size: 9px; padding: 1px 4px; margin-left: 2px; }
+  .oz-cats { gap: 3px; }
+  .oz-tag { display: none; }
+  .badge-mute, .badge-dc { font-size: 9px; padding: 1px 5px; }
+
+  /* 中央区 */
+  #board-center { gap: 10px; top: 38%; }
+  .pile-back { width: 52px; height: 72px; border-radius: 8px; }
+  .round-info { font-size: 10px; padding: 3px 8px; }
+  #direction-badge { font-size: 11px; padding: 3px 9px; }
+
+  /* 日志与状态栏让位，避免遮挡操作区 */
+  #log-panel { display: none; }
+  #status-bar { top: 6px; right: 6px; bottom: auto; padding: 3px 8px; font-size: 11px; }
+  #game-phase-text { display: none; }
+
+  /* Toast 放到屏幕中部，避免压住手牌 */
+  #toast-root { bottom: 38%; }
+
+  /* 弹窗可点性 */
+  .modal { padding: 16px 14px; max-height: 82vh; }
+  .modal h3 { font-size: 17px; }
+  .wp-btn { width: 50px; height: 38px; }
+  .mini-card { width: 48px; height: 66px; }
+  .color-pick .wp-btn { width: 40px; height: 32px; font-size: 13px; }
+  .modal-btns { gap: 6px; flex-wrap: wrap; }
+
+  /* 规则书 */
+  .rb-panel { width: 96vw; padding: 20px 16px 26px; max-height: 92vh; }
+  .rb-panel h2 { font-size: 19px; }
+  .rb-table { font-size: 12px; }
+
+  /* 大厅 */
+  .lobby-wrap { margin-top: 3vh; }
+  .logo { font-size: 40px; letter-spacing: 10px; margin-left: 10px; }
+  .field.inline { width: 118px; }
+  #lobby-actions { gap: 4px; }
+  .btn { padding: 10px 14px; font-size: 14px; }
 }
 
 /* ============ 规则书 ============ */

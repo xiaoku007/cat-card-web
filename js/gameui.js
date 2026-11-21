@@ -268,7 +268,9 @@ export class GameUI {
     handEl.innerHTML = '';
     const n = me.hand.length;
     const W = handEl.clientWidth || Math.min(window.innerWidth - 120, 1500);
-    const cardW = 108;
+    // 卡宽与 CSS 媒体查询保持一致（>900px:108 / ≤900px:88 / ≤640px:76）
+    const vw = window.innerWidth;
+    const cardW = vw <= 640 ? 76 : (vw <= 900 ? 88 : 108);
     const maxOff = Math.max(1, (n - 1) / 2);
     // 横向密度自适应：总宽不超出容器；牌越多叠得越密
     const step = n > 1 ? Math.min(86, (W - cardW) / (n - 1)) : 0;
