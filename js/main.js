@@ -50,16 +50,25 @@ let mySeat = -1;
 let lastReady = false;
 
 // ---------- 网络 ----------
+let lastStatus = '';
+let lastStatusAt = 0;
 const net = new GameNet({
   onSync: (state) => route(state),
   onStatus: (st, info) => {
+    const now = Date.now();
+    const repeat = st === lastStatus && now - lastStatusAt < 5000;
+    lastStatus = st;
+    lastStatusAt = now;
     switch (st) {
       case 'connecting': setConnStatus('warn', '连接中…'); break;
       case 'online': setConnStatus('ok', '已连接');
         if (info === 'host') toast('房间已创建，快邀请朋友吧！');
         if (info === 'migrated-host') toast('主机掉线，你已成为新主机');
         break;
-      case 'reconnecting': setConnStatus('warn', '重连中…'); toast('连接中断，正在重连…', 2000); break;
+      case 'reconnecting':
+        setConnStatus('warn', '重连中…');
+        if (!repeat) toast(info || '连接中断，正在重连…', 2000);
+        break;
       case 'hostdown': setConnStatus('bad', '主机掉线'); toast('主机掉线，无法继续', 4000); break;
       case 'error': setConnStatus('bad', '错误'); toast(info, 4000); break;
       case 'bye': setConnStatus('off', '已离开'); break;
@@ -68,6 +77,12 @@ const net = new GameNet({
   onErr: err,
 });
 if (urlp.signal) net.setSignal(urlp.signal);
+
+// 状态灯可点击：立即重试连接
+$('conn-status').addEventListener('click', () => {
+  net.retryNow();
+  toast('正在重试连接…', 1500);
+});
 
 // 将欢迎消息中的身份同步回来
 const netOnSync = net.cb.onSync.bind(net.cb);
@@ -84,8 +99,12 @@ net.cb.onSync = (state) => {
 // ---------- UI ----------
 const lobby = new LobbyUI({
   onCreate: async (name, settings) => {
-    const { code } = await net.createRoom(name, settings);
-    history.replaceState(null, '', location.pathname + '?room=' + code);
+    try {
+      const { code } = await net.createRoom(name, settings);
+      history.replaceState(null, '', location.pathname + '?room=' + code);
+    } catch (e) {
+      err('创建房间失败，请检查网络后重试');
+    }
   },
   onJoin: (code, name) => {
     history.replaceState(null, '', location.pathname + '?room=' + code);
@@ -96,7 +115,8 @@ const lobby = new LobbyUI({
   onSettings: (settings) => net.act('settings', { settings }),
   onLeave: () => { net.leaveRoom(); location.href = location.pathname; },
   onCopyLink: () => {
-    const link = location.origin + location.pathname + '?room=' + net.roomId;
+    const sig = net.signal ? '&signal=' + encodeURIComponent(net.signal) : '';
+    const link = location.origin + location.pathname + '?room=' + net.roomId + sig;
     const done = () => toast('邀请链接已复制 ✓');
     const fallback = () => {
       // 非安全上下文（如局域网 http）剪贴板 API 不可用：走 execCommand

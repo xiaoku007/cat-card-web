@@ -356,6 +356,7 @@ input:focus { border-color: #d8b25c; box-shadow: 0 0 0 3px rgba(216,178,92,.18);
 #conn-status.warn { color: #e8b06a; animation: blink 1s infinite; }
 #conn-status.bad { color: #e8734d; }
 #conn-status.off { color: #8f84b8; }
+#conn-status { cursor: pointer; }
 @keyframes blink { 50% { opacity: .35; } }
 
 /* ============ 弹窗 ============ */

@@ -11,14 +11,35 @@ const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 export const DEFAULT_SIGNAL = null; // null => 官方云信令 0.peerjs.com
 
+// 大陆网络优先使用国内公共 STUN（Google STUN 在大陆经常不可达），TURN 作为兜底
 const ICE = [
+  { urls: 'stun:stun.miwifi.com:3478' },
+  { urls: 'stun:stun.chat.bilibili.com:3478' },
+  { urls: 'stun:stun.hitv.com:3478' },
+  { urls: 'stun:stun.cdnbye.com:3478' },
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
   {
-    urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443'],
+    urls: [
+      'turn:openrelay.metered.ca:80',
+      'turn:openrelay.metered.ca:443',
+      'turn:openrelay.metered.ca:443?transport=tcp',
+    ],
     username: 'openrelayproject', credential: 'openrelayproject',
   },
 ];
+
+const SIGNAL_KEY = 'catcard-signal';
+
+export function savedSignal() {
+  try { return localStorage.getItem(SIGNAL_KEY) || null; } catch (e) { return null; }
+}
+export function saveSignal(sig) {
+  try {
+    if (sig) localStorage.setItem(SIGNAL_KEY, sig);
+    else localStorage.removeItem(SIGNAL_KEY);
+  } catch (e) { /* noop */ }
+}
 
 export function genRoomCode(len = 5) {
   let out = '';
@@ -52,6 +73,7 @@ function peerOptions(signal) {
       opts.host = m[1];
       opts.port = parseInt(m[2], 10);
       if (m[3]) opts.path = m[3];
+      opts.secure = location.protocol === 'https:';
     }
   }
   return opts;
@@ -91,6 +113,12 @@ export class GameNet {
     this.migrating = false;
 
     this.signal = null;
+    this.pendingActs = [];   // 断线期间排队的操作，重连后自动补发
+    this.connecting = false; // 防止并发重连
+    this.retryStep = 0;      // 退避步数
+    this.clientTimer = null;
+    this.hostTimer = null;
+    this.peerRetry = null;
   }
 
   // ---------- 客户端: 创建房间 ----------
@@ -104,7 +132,6 @@ export class GameNet {
   async becomeHost(code, name = null, settings = null, state = null) {
     const attempt = (state && state.app && state.app.attempt || 0) + 1;
     this.roomId = code;
-    this.isHost = true;
     this.hostAttempt = attempt;
     const hpid = hostPeerId(code, attempt);
 
@@ -131,49 +158,102 @@ export class GameNet {
     }
 
     this.destroyPeer();
-    await this.openPeer(hpid);
+    try {
+      await this.openPeer(hpid);
+    } catch (e) {
+      this.isHost = false;
+      this.engine = null;
+      this.roomId = null;
+      throw e;
+    }
+    this.isHost = true;
     this.amHosting = true;
     this.cb.onStatus('online', 'host');
     this.startHostTick();
   }
 
+  // 信令服务器候选：页面指定 → 上次成功 → 官方云（自动切换，避免单一节点不可用）
+  signalCandidates() {
+    const list = [];
+    const push = (sig) => {
+      const key = sig || 'cloud';
+      if (!list.some(x => (x || 'cloud') === key)) list.push(sig);
+    };
+    push(this.signal);
+    push(savedSignal());
+    push(null);
+    return list;
+  }
+
   openPeer(id) {
+    const cands = this.signalCandidates();
+    let lastErr = null;
+    const tryNext = (i) => {
+      if (i >= cands.length) return Promise.reject(lastErr || new Error('信令服务器不可达'));
+      return this.openPeerWith(id, cands[i])
+        .then((p) => { if (cands[i]) { this.signal = cands[i]; saveSignal(cands[i]); } return p; })
+        .catch((e) => { lastErr = e; return tryNext(i + 1); });
+    };
+    return tryNext(0);
+  }
+
+  openPeerWith(id, signal) {
     return new Promise((resolve, reject) => {
-      const p = new Peer(id, peerOptions(this.signal));
+      const p = new Peer(id, peerOptions(signal));
       let settled = false;
-      p.on('open', () => {
-        if (!settled) {
-          settled = true;
+      const done = (ok, val) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (ok) {
           this.peer = p;
-          this.setupPeerHandlers();
-          resolve(p);
+          this.setupPeerHandlers(p);
+          resolve(val);
+        } else {
+          try { p.destroy(); } catch (e) { /* noop */ }
+          reject(val);
         }
-      });
+      };
+      const timer = setTimeout(() => done(false, new Error('信令连接超时')), 10000);
+      p.on('open', () => done(true, p));
       p.on('error', (err) => {
         console.warn('[net] peer error', err.type, err);
-        if (!settled && !['network', 'disconnected', 'server-error', 'socket-error', 'socket-closed'].includes(err.type)) {
-          settled = true;
-          reject(err);
-        }
+        if (!settled) done(false, err);
       });
-      setTimeout(() => { if (!settled) reject(new Error('peer open timeout')); }, 20000);
     });
   }
 
-  setupPeerHandlers() {
-    const p = this.peer;
+  setupPeerHandlers(p) {
     p.on('connection', (conn) => this.onIncoming(conn));
-    p.on('disconnected', () => { if (!p.destroyed) { try { p.reconnect(); } catch (e) { /* noop */ } } });
+    p.on('disconnected', () => this.recoverPeer(p));
     p.on('error', (err) => {
-      if (err.type === 'unavailable-id') { /* 迁移竞态，稍后重试 */ }
+      if (['network', 'server-error', 'socket-error', 'socket-closed'].includes(err.type)) this.recoverPeer(p);
     });
+  }
+
+  // 信令断线恢复：保持同一个 peer id，定时重连直到恢复
+  recoverPeer(p) {
+    if (!p || this.peer !== p || p.destroyed) return;
+    if (this.peerRetry) return;
+    const tick = () => {
+      this.peerRetry = null;
+      if (this.peer !== p || p.destroyed || p.open) return;
+      try { p.reconnect(); } catch (e) { /* noop */ }
+      this.peerRetry = setTimeout(tick, 6000);
+    };
+    this.peerRetry = setTimeout(tick, 1000);
   }
 
   destroyPeer() {
+    if (this.peerRetry) { clearTimeout(this.peerRetry); this.peerRetry = null; }
     if (this.peer) { try { this.peer.destroy(); } catch (e) { /* noop */ } this.peer = null; }
   }
 
-  setSignal(sig) { this.signal = sig; if (this.peer) { this.destroyPeer(); } }
+  setSignal(sig) {
+    this.signal = sig;
+    saveSignal(sig);
+    if (this.peer) { this.destroyPeer(); }
+  }
 
   // ---------- 主机: 收到连接 ----------
   onIncoming(conn) {
@@ -348,7 +428,9 @@ export class GameNet {
 
   // ---------- 主机定时任务 ----------
   startHostTick() {
-    this.timers.push(setInterval(() => this.hostTick(), 1000));
+    if (this.hostTimer) clearInterval(this.hostTimer);
+    this.hostTimer = setInterval(() => this.hostTick(), 1000);
+    this.timers.push(this.hostTimer);
   }
 
   hostTick() {
@@ -415,6 +497,8 @@ export class GameNet {
     const session = this.loadSession();
     this.myId = session && session.roomId === this.roomId ? session.playerId : null;
     this.myName = name;
+    this.joinStart = Date.now();
+    this.retryStep = 0;
     this.cb.onStatus('connecting', '查找房间…');
     await this.connectLoop(1, true);
   }
@@ -435,49 +519,94 @@ export class GameNet {
     return hostPeerId(this.roomId, this.hostAttempt === 0 ? 1 : this.hostAttempt);
   }
 
+  async ensurePeer() {
+    if (this.peer && !this.peer.destroyed && this.peer.open) return this.peer;
+    this.destroyPeer();
+    return this.openPeer(uid());
+  }
+
+  nextBackoff() {
+    this.retryStep = Math.min((this.retryStep || 0) + 1, 4);
+    return Math.min(1200 * Math.pow(1.7, this.retryStep - 1), 8000);
+  }
+
+  scheduleReconnect(attempt, delayMs) {
+    if (this.amHosting || this.migrating) return;
+    if (this.reconnectTimer) return; // 已有重连任务在排队
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.connectLoop(attempt, false);
+    }, delayMs);
+  }
+
   async connectLoop(attempt, first = false) {
     if (this.amHosting || this.migrating) return;
+    if (this.connecting) return;
+    this.connecting = true;
+    this.lastPongAt = Date.now(); // 连接尝试期间先别触发心跳迁移
     const pid = hostPeerId(this.roomId, attempt);
     this.hostAttempt = attempt;
-    this.destroyPeer();
     try {
-      // 全新 peer（随机 id），用于连入房间
-      await this.openPeer(uid());
+      // 优先复用仍然可用的 peer，避免每次重连都重新握手信令
+      await this.ensurePeer();
     } catch (e) {
-      this.cb.onStatus('error', 'P2P 初始化失败：' + e.message);
+      this.connecting = false;
+      this.cb.onStatus('reconnecting', '信令服务器连接失败，重试中…');
+      this.scheduleReconnect(attempt, this.nextBackoff());
       return;
     }
     this.isHost = false;
     const conn = this.peer.connect(pid, { reliable: true, serialization: 'json', metadata: { name: this.myName } });
     this.conn = conn;
     const joined = new Promise((resolve) => {
+      let done = false;
+      const finish = (ok) => { if (!done) { done = true; resolve(ok); } };
       conn.on('open', () => {
-        conn.send({ t: 'hello', name: this.myName, playerId: this.myId, lastV: this.lastState ? this.lastState.v : 0 });
-        resolve(true);
+        try { conn.send({ t: 'hello', name: this.myName, playerId: this.myId, lastV: this.lastState ? this.lastState.v : 0 }); } catch (e) { /* noop */ }
+        finish(true);
       });
-      conn.on('error', () => resolve(false));
-      setTimeout(() => resolve(false), 8000);
+      conn.on('error', () => finish(false));
+      setTimeout(() => finish(false), 8000);
     });
-    if (!await joined) {
+    const ok = await joined;
+    this.connecting = false;
+    if (!ok) {
+      try { conn.close(); } catch (e) { /* noop */ }
+      if (this.conn === conn) this.conn = null;
       // 连接失败：重试几次后判定主机掉线 → 迁移
       if (first) this.cb.onStatus('reconnecting', '正在连接主机…');
-      if (Date.now() - this.joinStart < 60000) {
-        this.reconnectTimer = setTimeout(() => this.connectLoop(attempt, false), 2000);
+      if (Date.now() - this.joinStart < 90000) {
+        this.scheduleReconnect(attempt, this.nextBackoff());
         return;
       }
       this.cb.onStatus('hostdown', '主机不在线');
       return;
     }
+    this.retryStep = 0;
     this.bindClientConn(conn, pid);
   }
 
   bindClientConn(conn, pid) {
+    const old = this.conn;
     this.conn = conn;
     this.lastPongAt = Date.now();
-    conn.on('data', (msg) => this.onClientMessage(conn, pid, msg));
-    conn.on('close', () => this.onConnLost(pid));
-    conn.on('error', () => this.onConnLost(pid));
+    conn.on('data', (msg) => { if (this.conn === conn) this.onClientMessage(conn, pid, msg); });
+    conn.on('close', () => { if (this.conn === conn) this.onConnLost(pid); });
+    conn.on('error', () => { if (this.conn === conn) this.onConnLost(pid); });
+    if (old && old !== conn) { try { old.close(); } catch (e) { /* noop */ } }
     this.startClientTick();
+    if (this.myId) this.flushActs();
+  }
+
+  // 断线期间排队的操作：恢复连接后自动补发（最多保留 6 秒，避免过期操作）
+  flushActs() {
+    if (!this.conn || !this.conn.open) return;
+    const now = Date.now();
+    const acts = this.pendingActs.filter(a => now - a.at < 6000);
+    this.pendingActs = [];
+    for (const a of acts) {
+      try { this.conn.send({ t: 'act', playerId: this.myId, type: a.type, payload: a.payload }); } catch (e) { /* noop */ }
+    }
   }
 
   onConnLost(pid) {
@@ -485,8 +614,7 @@ export class GameNet {
     if (this.hostLost) return;
     this.cb.onStatus('reconnecting', '连接断开，重连中…');
     this.joinStart = Date.now();
-    // 先快速重试当前主机（可能是瞬时网络抖动）
-    this.reconnectTimer = setTimeout(() => this.connectLoop(this.hostAttempt, false), 1500);
+    this.scheduleReconnect(this.hostAttempt, 800);
   }
 
   onClientMessage(conn, pid, msg) {
@@ -527,7 +655,8 @@ export class GameNet {
 
   // 客户端心跳：失去主机 → 迁移
   startClientTick() {
-    this.timers.push(setInterval(() => this.clientTick(), 2000));
+    if (this.clientTimer) clearInterval(this.clientTimer);
+    this.clientTimer = setInterval(() => this.clientTick(), 2000);
   }
 
   clientTick() {
@@ -544,6 +673,7 @@ export class GameNet {
   migrate() {
     if (!this.lastState) return;
     this.hostLost = true;
+    if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
     const st = this.lastState;
     const oldHostSeat = st.app ? st.app.hostSeat : st.hostSeat;
     const alive = st.players.filter(p => !p.eliminated && p.seat !== oldHostSeat);
@@ -582,7 +712,7 @@ export class GameNet {
     }
   }
 
-  // ---------- 客户端发送行动 ----------
+  // 客户端发送行动
   act(type, payload) {
     if (this.amHosting && !this.conn) {
       // 主机本地行动：立即广播并反馈错误
@@ -592,8 +722,30 @@ export class GameNet {
       this.emitLocal();
       return;
     }
-    if (!this.conn || !this.conn.open) { if (this.cb.onErr) this.cb.onErr('未连接到主机'); return; }
+    if (!this.conn || !this.conn.open) {
+      // 已加入过房间：短暂断线时把操作排队，重连后自动补发，避免误报「未连接到主机」
+      if (this.roomId && this.myId) {
+        this.pendingActs.push({ type, payload, at: Date.now() });
+        if (this.pendingActs.length > 20) this.pendingActs.shift();
+        this.cb.onStatus('reconnecting', '正在重连，恢复后将自动执行操作…');
+        this.scheduleReconnect(this.hostAttempt, 300);
+        return;
+      }
+      if (this.cb.onErr) this.cb.onErr('未连接到主机');
+      return;
+    }
     try { this.conn.send({ t: 'act', playerId: this.myId, type, payload }); } catch (e) { /* noop */ }
+  }
+
+  // 手动重试（状态栏点击）
+  retryNow() {
+    if (this.amHosting) { if (this.peer) this.recoverPeer(this.peer); return; }
+    if (!this.roomId) return;
+    this.joinStart = Date.now();
+    this.hostLost = false;
+    this.retryStep = 0;
+    if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
+    this.scheduleReconnect(this.hostAttempt, 0);
   }
 
   // 主机身份但通过 conn 与外界通信的场景不存在；主机直接用 localAct
@@ -610,8 +762,12 @@ export class GameNet {
   destroy() {
     this.timers.forEach(t => clearInterval(t));
     this.timers = [];
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
+    if (this.clientTimer) { clearInterval(this.clientTimer); this.clientTimer = null; }
+    if (this.hostTimer) { clearInterval(this.hostTimer); this.hostTimer = null; }
     this.destroyPeer();
+    this.pendingActs = [];
+    this.connecting = false;
     this.amHosting = false;
     this.isHost = false;
     this.conn = null;
